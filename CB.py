@@ -1,46 +1,41 @@
 import pandas as pd
-import math
 import numpy as np
 import time
-import imp
-import pickle
 import os
-from os import path
-import json
-
-from chefboost.commons import functions, evaluate as eval
-from chefboost.training import Preprocess, Training
+import functions
+import eval
+from chefboost.training import Training
 from chefboost.tuning import gbm, adaboost, randomforest
 
 
-def fit(df, config={}, target_label='Decisions', validation_df=None):
+def fit(df, config={}, target_label='Decision', validation_df=None):
     """
-	Parameters:
-		df (pandas data frame): Training data frame. The target column must be named as 'Decision' and it has to be in the last column
+    Parameters:
+        df (pandas data frame): Training data frame. The target column must be named as 'Decision' and it has to be in the last column
 
-		config (dictionary):
+        config (dictionary):
 
-			config = {
-				'algorithm' (string): ID3, 'C4.5, CART, CHAID or Regression
-				'enableParallelism' (boolean): False
+            config = {
+                'algorithm' (string): ID3, 'C4.5, CART, CHAID or Regression
+                'enableParallelism' (boolean): False
 
-				'enableGBM' (boolean): True,
-				'epochs' (int): 7,
-				'learning_rate' (int): 1,
+                'enableGBM' (boolean): True,
+                'epochs' (int): 7,
+                'learning_rate' (int): 1,
 
-				'enableRandomForest' (boolean): True,
-				'num_of_trees' (int): 5,
+                'enableRandomForest' (boolean): True,
+                'num_of_trees' (int): 5,
 
-				'enableAdaboost' (boolean): True,
-				'num_of_weak_classifier' (int): 4
-			}
+                'enableAdaboost' (boolean): True,
+                'num_of_weak_classifier' (int): 4
+            }
 
-		validation_df (pandas data frame): if nothing is passed to validation data frame, then the function validates built trees for training data frame
+        validation_df (pandas data frame): if nothing is passed to validation data frame, then the function validates built trees for training data frame
 
-	Returns:
-		chefboost model
+    Returns:
+        chefboost model
 
-	"""
+    """
 
     # ------------------------
 
@@ -56,7 +51,6 @@ def fit(df, config={}, target_label='Decisions', validation_df=None):
         new_column_order = df.columns.drop('Decision').tolist() + ['Decision']
         print(new_column_order)
         df = df[new_column_order]
-
     # ------------------------
 
     base_df = df.copy()
@@ -85,7 +79,6 @@ def fit(df, config={}, target_label='Decisions', validation_df=None):
             if idx.shape[0] > 0:
                 df.loc[idx, column] = min_value - 1
                 nan_value.append(min_value - 1)
-                min_value - 1
             # print("NaN values are replaced to ", min_value - 1, " in column ", column)
             else:
                 nan_value.append(None)
@@ -98,12 +91,10 @@ def fit(df, config={}, target_label='Decisions', validation_df=None):
 
     # initialize params and folders
     config = functions.initializeParams(config)
-
     functions.initializeFolders()
     # rules.py 저장 필요 X
 
     # ------------------------
-
     algorithm = config['algorithm']
 
     valid_algorithms = ['ID3', 'C4.5', 'CART', 'CHAID', 'Regression']
@@ -124,9 +115,7 @@ def fit(df, config={}, target_label='Decisions', validation_df=None):
 
     enableAdaboost = config['enableAdaboost']
     enableParallelism = config['enableParallelism']
-
     # ------------------------
-
     if enableParallelism == True:
         print("[INFO]: ", config["num_cores"], "CPU cores will be allocated in parallel running")
 
@@ -135,7 +124,7 @@ def fit(df, config={}, target_label='Decisions', validation_df=None):
         freeze_support()
     # ------------------------
     raw_df = df.copy()
-    num_of_rows = df.shape[0];
+    num_of_rows = df.shape[0]
     num_of_columns = df.shape[1]
 
     if algorithm == 'Regression':
@@ -185,10 +174,9 @@ def fit(df, config={}, target_label='Decisions', validation_df=None):
     header = header + "\n"
 
     # ------------------------
-
     begin = time.time()
 
-    trees = [];
+    trees = []
     alphas = []
 
     if enableAdaboost == True:
@@ -212,7 +200,7 @@ def fit(df, config={}, target_label='Decisions', validation_df=None):
                                    process_id=process_id)
     else:  # regular decision tree building
 
-        root = 1;
+        root = 1
         file = "outputs/rules/rules.py"
         functions.createFile(file, header)
 

@@ -1,5 +1,7 @@
 import pandas as pd
-from chefboost import Chefboost as cb
+import CB as cb
+import time
+
 
 # ----------------------------------------------
 

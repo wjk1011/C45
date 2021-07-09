@@ -107,3 +107,8 @@ def initializeParams(config):
     config['num_cores'] = num_cores
 
     return config
+
+
+def createFile(file,content):
+    f = open(file, "w")
+    f.write(content)
