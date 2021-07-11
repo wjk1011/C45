@@ -4,7 +4,6 @@ from os import path
 import multiprocessing
 import CB as cb
 
-
 def bulk_prediction(df, model):
     predictions = []
 
@@ -14,7 +13,6 @@ def bulk_prediction(df, model):
         predictions.append(prediction)
 
     df['Prediction'] = predictions
-
 
 def initializeFolders():
     import sys
@@ -105,10 +103,13 @@ def initializeParams(config):
     config['num_of_weak_classifier'] = num_of_weak_classifier
     config['enableParallelism'] = enableParallelism
     config['num_cores'] = num_cores
-
     return config
-
 
 def createFile(file,content):
     f = open(file, "w")
     f.write(content)
+
+def storeRule(file,content):
+	f = open(file, "a+")
+	f.writelines(content)
+	f.writelines("\n")

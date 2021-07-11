@@ -6,7 +6,7 @@ import functions
 import eval
 import Training
 import gbm, adaboost, randomforest
-
+from sklearn.model_selection import train_test_split
 
 def fit(df, config={}, target_label='Decision', validation_df=None):
     """
@@ -386,3 +386,22 @@ def evaluate(model, df, target_label='Decision', task='test'):
         df['Prediction'] = df['Prediction'].astype(str)
 
     eval.evaluate(df, task=task)
+
+def data_split(data):
+   target_label = data.columns[len(data.columns) - 1]
+   target = data[target_label]
+   train_data, test_data, train_label, test_label = train_test_split(data, target, test_size=0.3)
+   train_data_ = pd.concat([train_data, train_label], axis=1)
+   test_data_ = pd.concat([test_data, test_label], axis=1)
+   return train_data_, test_data_
+
+def check_decision(og_data):
+   data = og_data.copy()
+   target_label = og_data.columns[len(data.columns) - 1]
+   if target_label != 'Decision':
+      dec = og_data.loc[:, target_label].copy()
+      data['Decision'] = dec
+      data = data.drop(target_label, axis=1)
+   else:
+      print('You have Decision Columns in your dataframe! No need to Change!')
+   return data
