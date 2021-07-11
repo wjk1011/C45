@@ -2,7 +2,7 @@ import pathlib
 import os
 from os import path
 import multiprocessing
-from chefboost import Chefboost as cb
+import CB as cb
 
 
 def bulk_prediction(df, model):
