@@ -5,9 +5,10 @@ import math
 import Training
 #from chefboost.training import Training
 #from training import Training
+import time
 
 def processContinuousFeatures(algorithm, df, column_name, entropy, config):
-	
+
 	#if True:
 	if df[column_name].nunique() <= 20: # 칼럼별 고유값의 개수
 		unique_values = sorted(df[column_name].unique())

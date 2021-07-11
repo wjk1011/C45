@@ -7,8 +7,10 @@ import eval
 import Training
 import gbm, adaboost, randomforest
 from sklearn.model_selection import train_test_split
+import main
 
 def fit(df, config={}, target_label='Decision', validation_df=None):
+    time_start_fit = time.time()
     """
     Parameters:
         df (pandas data frame): Training data frame. The target column must be named as 'Decision' and it has to be in the last column
@@ -90,6 +92,8 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
     # ------------------------
 
     # initialize params and folders
+
+    print('Time of fit: ',time.time() - time_start_fit)
     config = functions.initializeParams(config)
     functions.initializeFolders()
     # rules.py 저장 필요 X
@@ -390,7 +394,7 @@ def evaluate(model, df, target_label='Decision', task='test'):
 def data_split(data):
    target_label = data.columns[len(data.columns) - 1]
    target = data[target_label]
-   train_data, test_data, train_label, test_label = train_test_split(data, target, test_size=0.3)
+   train_data, test_data, train_label, test_label = train_test_split(data, target, test_size=0.4)
    train_data_ = pd.concat([train_data, train_label], axis=1)
    test_data_ = pd.concat([test_data, test_label], axis=1)
    return train_data_, test_data_

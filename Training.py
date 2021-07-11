@@ -4,17 +4,14 @@ import uuid
 import json
 import numpy as np
 import copy
-import os
-import multiprocessing
 import multiprocessing.pool
 import pandas as pd
 import psutil
 import gc
-import sys
+import time
 
 import Preprocess
 import functions
-import evaluate
 
 #----------------------------------------
 
@@ -39,7 +36,6 @@ class MyPool(multiprocessing.pool.Pool):
 	
 #----------------------------------------
 def calculateEntropy(df, config):
-	
 	algorithm = config['algorithm']
 	
 	#--------------------------
@@ -64,7 +60,6 @@ def calculateEntropy(df, config):
 		class_probability = num_of_decisions/instances
 		
 		entropy = entropy - class_probability*math.log(class_probability, 2)
-		
 	return entropy
 
 def findDecision(df, config):
@@ -97,11 +92,10 @@ def findDecision(df, config):
 		metric_name = "Std"
 	
 	winner_name = df.columns[winner_index]
-	
 	return winner_name, df.shape[0], metric_value, metric_name
 	
 def findGains(df, config):
-	
+	time_start_findGains = time.time()
 	algorithm = config['algorithm']
 	decision_classes = df["Decision"].unique()
 	
@@ -201,7 +195,7 @@ def findGains(df, config):
 		resp_obj["gains"][feature] = gains[idx]
 	
 	resp_obj["entropy"] = entropy
-	
+	print('Time of findGains: ', time.time() - time_start_findGains)
 	return resp_obj
 	
 def createBranchWrapper(func, args):
@@ -209,6 +203,8 @@ def createBranchWrapper(func, args):
 
 def createBranch(config, current_class, subdataset, numericColumn, branch_index
 	, winner_name, winner_index, root, parents, file, dataset_features, num_of_instances, metric, tree_id = 0, main_process_id = None):
+
+	time_start_createBranch = time.time()
 	
 	custom_rules = []
 	
@@ -336,11 +332,12 @@ def createBranch(config, current_class, subdataset, numericColumn, branch_index
 		parents = copy.copy(parents_raw)
 	
 	gc.collect()
-	
+
+	print('Time of createBranch: ', time.time() - time_start_createBranch)
 	return custom_rules
 
 def buildDecisionTree(df, root, file, config, dataset_features, parent_level = 0, leaf_id = 0, parents = 'root', tree_id = 0, validation_df = None, main_process_id = None):
-		
+	time_start_buildDecisionTree = time.time()
 	models = []
 	
 	decision_rules = []
@@ -402,9 +399,7 @@ def buildDecisionTree(df, root, file, config, dataset_features, parent_level = 0
 		
 		#create branches serially
 		if enableParallelism != True:
-			
 			if i == 0:
-				
 				descriptor = {
 					"feature": winner_name,
 					"instances": num_of_instances,
@@ -413,12 +408,9 @@ def buildDecisionTree(df, root, file, config, dataset_features, parent_level = 0
 					"depth": parent_level + 1
 				}
 				descriptor = "# "+json.dumps(descriptor)
-				
 				functions.storeRule(file, (functions.formatRule(root), "", descriptor))
-			
 			results = createBranch(config, current_class, subdataset, numericColumn, branch_index
 				, winner_name, winner_index, root, parents, file, dataset_features, num_of_instances, metric, tree_id = tree_id, main_process_id = main_process_id)
-			
 			decision_rules = decision_rules + results
 			
 		else:
@@ -608,7 +600,7 @@ def buildDecisionTree(df, root, file, config, dataset_features, parent_level = 0
 			fp, pathname, description = imp.find_module(moduleName)
 			myrules = imp.load_module(moduleName, fp, pathname, description) #rules0
 			models.append(myrules)
-			
+	print('Time of buildDecsionTree: ', time.time() - time_start_buildDecisionTree)
 	return models
 			
 def findPrediction(row):
