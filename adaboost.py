@@ -4,7 +4,7 @@ import numpy as np
 import functions, evaluate
 import Training
 import CB as cb
-
+import time
 import imp
 import math
 
