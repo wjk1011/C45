@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-import functions, evaluate
+import functions, eval
 import Training
 import CB as cb
 
