@@ -12,6 +12,7 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
     print('동현')
     print('주영')
     print('유하')
+    print('찬규')
     time_start_fit = time.time()
     """
     Parameters:
