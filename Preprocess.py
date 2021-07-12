@@ -14,25 +14,19 @@ def processContinuousFeatures(algorithm, df, column_name, entropy, config):
 		unique_values = sorted(df[column_name].unique())
 	else:
 		unique_values = []
-		
 		df_mean = df[column_name].mean()
 		df_std = df[column_name].std(ddof=0)
 		df_min = df[column_name].min()
 		df_max = df[column_name].max()
-		
 		unique_values.append(df[column_name].min())
 		unique_values.append(df[column_name].max())
 		unique_values.append(df[column_name].mean())
-		
 		scales = list(range(-3,+4, 1))
 		for scale in scales:
 			if df_mean + scale * df_std > df_min and df_mean + scale * df_std < df_max:
 				unique_values.append(df_mean + scale * df_std)
-		
 		unique_values.sort()
-		
 	#print(column_name,"->",unique_values)
-	
 	subset_gainratios = []; subset_gains = []; subset_ginis = []; subset_red_stdevs = []; subset_chi_squares = []
 	
 	if len(unique_values) == 1:
