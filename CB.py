@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 
 def fit(df, config={}, target_label='Decision', validation_df=None):
     print('동현')
+    print('주영')
     time_start_fit = time.time()
     """
     Parameters:
