@@ -35,9 +35,7 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
 
     Returns:
         chefboost model
-
     """
-
     # ------------------------
 
     process_id = os.getpid()
