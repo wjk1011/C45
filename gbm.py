@@ -3,7 +3,7 @@ import numpy as np
 
 import imp
 
-import functions, evaluate
+import functions, eval
 import Preprocess, Training
 import CB as cb
 
