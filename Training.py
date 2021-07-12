@@ -98,16 +98,11 @@ def findGains(df, config):
 	time_start_findGains = time.time()
 	algorithm = config['algorithm']
 	decision_classes = df["Decision"].unique()
-	
 	#-----------------------------
-	
 	entropy = 0
-	
 	if algorithm == "ID3" or algorithm == "C4.5":
 		entropy = calculateEntropy(df, config)
-	
 	columns = df.shape[1]; instances = df.shape[0]
-
 	gains = []
 
 	for i in range(0, columns-1):
@@ -205,9 +200,7 @@ def createBranch(config, current_class, subdataset, numericColumn, branch_index
 	, winner_name, winner_index, root, parents, file, dataset_features, num_of_instances, metric, tree_id = 0, main_process_id = None):
 
 	time_start_createBranch = time.time()
-	
 	custom_rules = []
-	
 	algorithm = config['algorithm']
 	enableAdaboost = config['enableAdaboost']
 	enableGBM = config['enableGBM']
@@ -217,12 +210,9 @@ def createBranch(config, current_class, subdataset, numericColumn, branch_index
 	charForResp = "'"
 	if algorithm == 'Regression':
 		charForResp = ""
-	
 	#---------------------------
-		
 	tmp_root = root * 1
 	parents_raw = copy.copy(parents)
-	
 	#---------------------------
 	
 	if numericColumn == True:

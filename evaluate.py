@@ -1,7 +1,6 @@
 import math
 
 def evaluate(df, task = 'train'):
-	
 	if df['Decision'].dtypes == 'object':
 		problem_type = 'classification'
 	else:

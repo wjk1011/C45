@@ -1,8 +1,5 @@
 import pandas as pd
 import CB as cb
-import time
-
-
 # ----------------------------------------------
 
 parallelism_cases = [True]
@@ -17,7 +14,7 @@ if __name__ == '__main__':
         df = pd.read_csv("dataset/wine.csv")
         train_data, test_data = cb.train_test_split(df)
         config = {'algorithm': 'C4.5', 'enableParallelism': enableParallelism}
-        
+
         model = cb.fit(train_data, config, validation_df=test_data)
 
     print("-------------------------")

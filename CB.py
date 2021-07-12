@@ -7,7 +7,6 @@ import eval
 import Training
 import gbm, adaboost, randomforest
 from sklearn.model_selection import train_test_split
-import main
 
 def fit(df, config={}, target_label='Decision', validation_df=None):
     time_start_fit = time.time()
@@ -240,8 +239,6 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
     # -----------------------------------------
 
     return obj
-
-
 # -----------------------------------------
 
 def predict(model, param):
