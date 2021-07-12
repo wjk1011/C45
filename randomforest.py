@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from multiprocessing import Pool
-import functions, eval
+import functions, evaluate
 import Training
 import CB as cb
 from tqdm import tqdm
