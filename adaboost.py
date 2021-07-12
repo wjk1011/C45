@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-import functions, eval
+import functions
 import Training
 import CB as cb
 import time
