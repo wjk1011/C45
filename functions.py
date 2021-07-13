@@ -5,6 +5,7 @@ import multiprocessing
 import CB as cb
 import time
 
+
 def bulk_prediction(df, model):
     predictions = []
 
@@ -13,6 +14,7 @@ def bulk_prediction(df, model):
         prediction = cb.predict(model, features)
         predictions.append(prediction)
     df['Prediction'] = predictions
+
 
 def initializeFolders():
     time_start_initialfolder = time.time()
@@ -39,7 +41,7 @@ def initializeFolders():
                     os.remove(outputs_path + "rules" + os.path.sep + file)
     except Exception as err:
         print("WARNING: ", str(err))
-    print('Time of InitializeFolders: ',time.time() - time_start_initialfolder)
+    print('Time of InitializeFolders: ', time.time() - time_start_initialfolder)
 
 
 # ------------------------------------
@@ -47,15 +49,7 @@ def initializeFolders():
 def initializeParams(config):
     time_start_initialize = time.time()
     algorithm = 'ID3'
-    enableRandomForest = False
-    num_of_trees = 5
-    enableMultitasking = False
-    enableGBM = False
-    epochs = 10
-    learning_rate = 1
-    max_depth = 3
-    enableAdaboost = False
-    num_of_weak_classifier = 4
+
     enableParallelism = True
     num_cores = int(multiprocessing.cpu_count() / 2)  # allocate half of your total cores
 
@@ -68,26 +62,11 @@ def initializeParams(config):
         if key == 'algorithm':
             algorithm = value
         # ---------------------------------
-        elif key == 'enableRandomForest':
-            enableRandomForest = value
-        elif key == 'num_of_trees':
-            num_of_trees = value
-        elif key == 'enableMultitasking':
-            enableMultitasking = value
+
         # ---------------------------------
-        elif key == 'enableGBM':
-            enableGBM = value
-        elif key == 'epochs':
-            epochs = value
-        elif key == 'learning_rate':
-            learning_rate = value
-        elif key == 'max_depth':
-            max_depth = value
+
         # ---------------------------------
-        elif key == 'enableAdaboost':
-            enableAdaboost = value
-        elif key == 'num_of_weak_classifier':
-            num_of_weak_classifier = value
+
         # ---------------------------------
         elif key == 'enableParallelism':
             enableParallelism = value
@@ -95,28 +74,22 @@ def initializeParams(config):
             num_cores = value
 
     config['algorithm'] = algorithm
-    config['enableRandomForest'] = enableRandomForest
-    config['num_of_trees'] = num_of_trees
-    config['enableMultitasking'] = enableMultitasking
-    config['enableGBM'] = enableGBM
-    config['epochs'] = epochs
-    config['learning_rate'] = learning_rate
-    config['max_depth'] = max_depth
-    config['enableAdaboost'] = enableAdaboost
-    config['num_of_weak_classifier'] = num_of_weak_classifier
+
     config['enableParallelism'] = enableParallelism
     config['num_cores'] = num_cores
     time_end_initialize = time.time()
-    print('Time of InitializeParams: ',time_end_initialize - time_start_initialize)
+    print('Time of InitializeParams: ', time_end_initialize - time_start_initialize)
     return config
 
-def createFile(file,content):
+
+def createFile(file, content):
     time_start_createFile = time.time()
     f = open(file, "w")
     f.write(content)
     print('Time of createFile: ', time.time() - time_start_createFile)
 
-def storeRule(file,content):
-	f = open(file, "a+")
-	f.writelines(content)
-	f.writelines("\n")
+
+def storeRule(file, content):
+    f = open(file, "a+")
+    f.writelines(content)
+    f.writelines("\n")

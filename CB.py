@@ -5,8 +5,8 @@ import os
 import functions
 import eval
 import Training
-import gbm, adaboost, randomforest
 from sklearn.model_selection import train_test_split
+
 
 def fit(df, config={}, target_label='Decision', validation_df=None):
     time_start_fit = time.time()
@@ -19,16 +19,7 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
             config = {
                 'algorithm' (string): ID3, 'C4.5, CART, CHAID or Regression
                 'enableParallelism' (boolean): False
-
-                'enableGBM' (boolean): True,
-                'epochs' (int): 7,
-                'learning_rate' (int): 1,
-
-                'enableRandomForest' (boolean): True,
-                'num_of_trees' (int): 5,
-
-                'enableAdaboost' (boolean): True,
-                'num_of_weak_classifier' (int): 4
+                # rule.py 저장 on/off
             }
 
         validation_df (pandas data frame): if nothing is passed to validation data frame, then the function validates built trees for training data frame
@@ -90,7 +81,7 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
 
     # initialize params and folders
 
-    print('Time of fit: ',time.time() - time_start_fit)
+    print('Time of fit: ', time.time() - time_start_fit)
     config = functions.initializeParams(config)
     functions.initializeFolders()
     # rules.py 저장 필요 X
@@ -106,15 +97,6 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
 
     # ------------------------
 
-    enableRandomForest = config['enableRandomForest']
-    num_of_trees = config['num_of_trees']
-    enableMultitasking = config['enableMultitasking']  # no longer used. check to remove this variable.
-
-    enableGBM = config['enableGBM']
-    epochs = config['epochs']
-    learning_rate = config['learning_rate']
-
-    enableAdaboost = config['enableAdaboost']
     enableParallelism = config['enableParallelism']
     # ------------------------
     if enableParallelism == True:
@@ -144,18 +126,6 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
         config['algorithm'] = 'Regression'
         global_stdev = df['Decision'].std(ddof=0)
 
-    if enableGBM == True:
-        print("Gradient Boosting Machines...")
-        algorithm = 'Regression'
-        config['algorithm'] = 'Regression'
-
-    if enableAdaboost == True:
-        # enableParallelism = False
-        for j in range(0, num_of_columns):
-            column_name = df.columns[j]
-            if df[column_name].dtypes == 'object':
-                raise ValueError('Adaboost must be run on numeric data set for both features and target')
-
     # -------------------------
 
     print(algorithm, " tree is going to be built...")
@@ -180,39 +150,18 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
     trees = []
     alphas = []
 
-    if enableAdaboost == True:
-        trees, alphas = adaboost.apply(df, config, header, dataset_features, validation_df=validation_df,
-                                       process_id=process_id)
+    root = 1
+    file = "outputs/rules/rules.py"
+    functions.createFile(file, header)
 
-    elif enableGBM == True:
+    if enableParallelism == True:
+        json_file = "outputs/rules/rules.json"
+        functions.createFile(json_file, "[\n")
 
-        if df['Decision'].dtypes == 'object':  # transform classification problem to regression
-            trees, alphas = gbm.classifier(df, config, header, dataset_features, validation_df=validation_df,
-                                           process_id=process_id)
-            classification = True
-
-        else:  # regression
-            trees = gbm.regressor(df, config, header, dataset_features, validation_df=validation_df,
-                                  process_id=process_id)
-            classification = False
-
-    elif enableRandomForest == True:
-        trees = randomforest.apply(df, config, header, dataset_features, validation_df=validation_df,
-                                   process_id=process_id)
-    else:  # regular decision tree building
-
-        root = 1
-        file = "outputs/rules/rules.py"
-        functions.createFile(file, header)
-
-        if enableParallelism == True:
-            json_file = "outputs/rules/rules.json"
-            functions.createFile(json_file, "[\n")
-
-        trees = Training.buildDecisionTree(df, root=root, file=file, config=config
-                                           , dataset_features=dataset_features
-                                           , parent_level=0, leaf_id=0, parents='root', validation_df=validation_df,
-                                           main_process_id=process_id)
+    trees = Training.buildDecisionTree(df, root=root, file=file, config=config
+                                       , dataset_features=dataset_features
+                                       , parent_level=0, leaf_id=0, parents='root', validation_df=validation_df,
+                                       main_process_id=process_id)
 
     print("-------------------------")
     print("finished in ", time.time() - begin, " seconds")
@@ -237,6 +186,8 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
     # -----------------------------------------
 
     return obj
+
+
 # -----------------------------------------
 
 def predict(model, param):
@@ -280,10 +231,6 @@ def predict(model, param):
     # print("instance: ", param)
     # -----------------------
 
-    enableGBM = config['enableGBM']
-    adaboost = config['enableAdaboost']
-    enableRandomForest = config['enableRandomForest']
-
     # -----------------------
 
     classification = False
@@ -292,43 +239,24 @@ def predict(model, param):
 
     # -----------------------
 
-    if enableGBM == True:
-
-        if len(trees) == config['epochs']:
-            classification = False
-        else:
-            classification = True
-            prediction_classes = [0 for i in alphas]
-
     # -----------------------
 
     if len(trees) > 1:  # bagging or boosting
         index = 0
         for tree in trees:
-            if adaboost != True:
 
-                custom_prediction = tree.findDecision(param)
+            custom_prediction = tree.findDecision(param)
 
-                if custom_prediction != None:
-                    if type(custom_prediction) != str:  # regression
+            if custom_prediction != None:
+                if type(custom_prediction) != str:  # regression
+                    prediction += custom_prediction
+                else:
+                    classification = True
+                    prediction_classes.append(custom_prediction)
 
-                        if enableGBM == True and classification == True:
-                            prediction_classes[index % len(alphas)] += custom_prediction
-                        else:
-                            prediction += custom_prediction
-                    else:
-                        classification = True
-                        prediction_classes.append(custom_prediction)
-            else:  # adaboost
-                prediction += alphas[index] * tree.findDecision(param)
             index = index + 1
 
-        if enableRandomForest == True:
-            # notice that gbm requires cumilative sum but random forest requires mean of each tree
-            prediction = prediction / len(trees)
 
-        if adaboost == True:
-            prediction = functions.sign(prediction)
     else:  # regular decision tree
         tree = trees[0]
         prediction = tree.findDecision(param)
@@ -336,19 +264,15 @@ def predict(model, param):
     if classification == False:
         return prediction
     else:
-        if enableGBM == True and classification == True:
-            return alphas[np.argmax(prediction_classes)]
-        else:  # classification
-            # e.g. random forest
-            # get predictions made by different trees
-            predictions = np.array(prediction_classes)
 
-            # find the most frequent prediction
-            (values, counts) = np.unique(predictions, return_counts=True)
-            idx = np.argmax(counts)
-            prediction = values[idx]
+        predictions = np.array(prediction_classes)
 
-            return prediction
+        # find the most frequent prediction
+        (values, counts) = np.unique(predictions, return_counts=True)
+        idx = np.argmax(counts)
+        prediction = values[idx]
+
+        return prediction
 
 
 def evaluate(model, df, target_label='Decision', task='test'):
@@ -378,29 +302,25 @@ def evaluate(model, df, target_label='Decision', task='test'):
 
     functions.bulk_prediction(df, model)
 
-    enableAdaboost = model["config"]["enableAdaboost"]
-
-    if enableAdaboost:
-        df['Decision'] = df['Decision'].astype(str)
-        df['Prediction'] = df['Prediction'].astype(str)
-
     eval.evaluate(df, task=task)
 
+
 def data_split(data):
-   target_label = data.columns[len(data.columns) - 1]
-   target = data[target_label]
-   train_data, test_data, train_label, test_label = train_test_split(data, target, test_size=0.4)
-   train_data_ = pd.concat([train_data, train_label], axis=1)
-   test_data_ = pd.concat([test_data, test_label], axis=1)
-   return train_data_, test_data_
+    target_label = data.columns[len(data.columns) - 1]
+    target = data[target_label]
+    train_data, test_data, train_label, test_label = train_test_split(data, target, test_size=0.4)
+    train_data_ = pd.concat([train_data, train_label], axis=1)
+    test_data_ = pd.concat([test_data, test_label], axis=1)
+    return train_data_, test_data_
+
 
 def check_decision(og_data):
-   data = og_data.copy()
-   target_label = og_data.columns[len(data.columns) - 1]
-   if target_label != 'Decision':
-      dec = og_data.loc[:, target_label].copy()
-      data['Decision'] = dec
-      data = data.drop(target_label, axis=1)
-   else:
-      print('You have Decision Columns in your dataframe! No need to Change!')
-   return data
+    data = og_data.copy()
+    target_label = og_data.columns[len(data.columns) - 1]
+    if target_label != 'Decision':
+        dec = og_data.loc[:, target_label].copy()
+        data['Decision'] = dec
+        data = data.drop(target_label, axis=1)
+    else:
+        print('You have Decision Columns in your dataframe! No need to Change!')
+    return data
