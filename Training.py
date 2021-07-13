@@ -365,7 +365,7 @@ def buildDecisionTree(df, root, file, config, dataset_features, parent_level=0, 
     columns = df.shape[1]
     for i in range(0, columns - 1):
         # column_name = df.columns[i]; column_type = df[column_name].dtypes #numeric field already transformed to object. you cannot check it with df itself, you should check df_copy
-        column_name = df_copy.columns[i];
+        column_name = df_copy.columns[i]
         column_type = df_copy[column_name].dtypes
         if column_type != 'object' and column_name != winner_name:
             df.loc[:, column_name] = df_copy.loc[:, column_name]
@@ -486,20 +486,20 @@ def buildDecisionTree(df, root, file, config, dataset_features, parent_level=0, 
 
             # --------------------------------
             """
-			#causes hang problem if number of input_params is greater than num_cores
-			pool = MyPool(num_cores)
-			branch_results = pool.starmap(createBranch, input_params)
-			
-			for branch_result in branch_results:
-				for leaf_result in branch_result:
-					results.append(leaf_result)
-			
-			pool.close()
-			pool.join()
-			pool.terminate()
-			
-			gc.collect()
-			"""
+            #causes hang problem if number of input_params is greater than num_cores
+            pool = MyPool(num_cores)
+            branch_results = pool.starmap(createBranch, input_params)
+            
+            for branch_result in branch_results:
+                for leaf_result in branch_result:
+                    results.append(leaf_result)
+            
+            pool.close()
+            pool.join()
+            pool.terminate()
+            
+            gc.collect()
+            """
             # --------------------------------
 
             # workaround for hang problem. set num_cores and active threads same.
