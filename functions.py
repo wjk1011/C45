@@ -3,8 +3,6 @@ import os
 from os import path
 import multiprocessing
 import CB as cb
-import time
-
 
 def bulk_prediction(df, model):
     predictions = []
@@ -17,7 +15,6 @@ def bulk_prediction(df, model):
 
 
 def initializeFolders():
-    time_start_initialfolder = time.time()
     import sys
     sys.path.append("..")
     pathlib.Path("outputs").mkdir(parents=True, exist_ok=True)
@@ -41,13 +38,11 @@ def initializeFolders():
                     os.remove(outputs_path + "rules" + os.path.sep + file)
     except Exception as err:
         print("WARNING: ", str(err))
-    print('Time of InitializeFolders: ', time.time() - time_start_initialfolder)
 
 
 # ------------------------------------
 
 def initializeParams(config):
-    time_start_initialize = time.time()
     enableParallelism = True
     num_cores = int(multiprocessing.cpu_count() / 2)  # allocate half of your total cores
 
@@ -61,16 +56,14 @@ def initializeParams(config):
             num_cores = value
     config['enableParallelism'] = enableParallelism
     config['num_cores'] = num_cores
-    time_end_initialize = time.time()
-    print('Time of InitializeParams: ', time_end_initialize - time_start_initialize)
+
+
     return config
 
 
 def createFile(file, content):
-    time_start_createFile = time.time()
     f = open(file, "w")
     f.write(content)
-    print('Time of createFile: ', time.time() - time_start_createFile)
 
 
 def storeRule(file, content):
