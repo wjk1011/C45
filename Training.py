@@ -103,7 +103,7 @@ def findDecision(df, config):
 
 
 def findGains(df, config):
-    time_start_findGains = time.time()
+
     algorithm = config['algorithm']
     decision_classes = df["Decision"].unique()
     # -----------------------------
@@ -199,7 +199,7 @@ def findGains(df, config):
         resp_obj["gains"][feature] = gains[idx]
 
     resp_obj["entropy"] = entropy
-    print('Time of findGains: ', time.time() - time_start_findGains)
+
     return resp_obj
 
 
@@ -210,7 +210,7 @@ def createBranchWrapper(func, args):
 def createBranch(config, current_class, subdataset, numericColumn, branch_index
                  , winner_name, winner_index, root, parents, file, dataset_features, num_of_instances, metric,
                  tree_id=0, main_process_id=None):
-    time_start_createBranch = time.time()
+
     custom_rules = []
     algorithm = config['algorithm']
     enableParallelism = config['enableParallelism']
@@ -323,13 +323,13 @@ def createBranch(config, current_class, subdataset, numericColumn, branch_index
 
     gc.collect()
 
-    print('Time of createBranch: ', time.time() - time_start_createBranch)
+    print
     return custom_rules
 
 
 def buildDecisionTree(df, root, file, config, dataset_features, parent_level=0, leaf_id=0, parents='root', tree_id=0,
                       validation_df=None, main_process_id=None):
-    time_start_buildDecisionTree = time.time()
+
     models = []
 
     decision_rules = []
@@ -588,7 +588,7 @@ def buildDecisionTree(df, root, file, config, dataset_features, parent_level=0, 
         fp, pathname, description = imp.find_module(moduleName)
         myrules = imp.load_module(moduleName, fp, pathname, description)  # rules0
         models.append(myrules)
-    print('Time of buildDecsionTree: ', time.time() - time_start_buildDecisionTree)
+
     return models
 
 
