@@ -1,10 +1,10 @@
 1. config 속성 중에 enableRandomForest, enableGBM, enable아다부스트 속성을 지워보며 
-   필요치 않은 속성들 제거 해주기
+   필요치 않은 속성들 제거 해주기 /////완료
 2. output 생성을 조건화 시켜주기 'on/off' -> config에 넣어주기
-3. sklearn의 train test split random state 정해서 인풋으로 비율 값 그대로 데이터 찢어주는것. -> 시간이 오래 걸릴 수 있으니 일단 sklearn
+3. sklearn의 train test split random state 정해서 인풋으로 비율 값 그대로 데이터 찢어주는것.
+-> 시간이 오래 걸릴 수 있으니 일단 sklearn /////완료
 4. max depth 설정해주기 
-5. C4.5 제외 알고리즘 쳐내기
+5. C4.5 제외 알고리즘 쳐내기 /////완료
 6. 알고리즘 돌아가는 방식
 
-1번 -> 각자 진행후 
-          에러 없이 돌아가는 사람들 중 가장 짧은 코드를 가진 사람 WIN
+
