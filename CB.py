@@ -300,14 +300,6 @@ def evaluate(model, df, target_label='Decision', task='test'):
 
     eval.evaluate(df, task=task)
 
-def sampling_func(data, sample_pct):
-    np.random.seed(123)
-    N = len(data)
-    sample_n = int(len(data)*sample_pct) # integer
-    sample = data.take(np.random.permutation(N)[:sample_n])
-    return sample
-
-
 def data_split(data, _portion: float):
     target_unique = data['Decision'].unique()
     data_0 = data[data['Decision'] == target_unique[0]]
