@@ -300,15 +300,31 @@ def evaluate(model, df, target_label='Decision', task='test'):
 
     eval.evaluate(df, task=task)
 
+def sampling_func(data, sample_pct):
+    np.random.seed(123)
+    N = len(data)
+    sample_n = int(len(data)*sample_pct) # integer
+    sample = data.take(np.random.permutation(N)[:sample_n])
+    return sample
 
-def data_split(data):
-    target_label = data.columns[len(data.columns) - 1]
-    target = data[target_label]
-    train_data, test_data, train_label, test_label = train_test_split(data, target, test_size=0.4)
-    train_data_ = pd.concat([train_data, train_label], axis=1)
-    test_data_ = pd.concat([test_data, test_label], axis=1)
-    return train_data_, test_data_
 
+def data_split(data, _portion: float):
+    target_unique = data['Decision'].unique()
+    data_0 = data[data['Decision'] == target_unique[0]]
+    data_1 = data[data['Decision'] == target_unique[1]]
+
+    sample_data_0 = int(len(data_0) * _portion)
+    sample_data_1 = int(len(data_1) * _portion)
+
+    train_data_0 = data_0.take(np.random.permutation(len(data_0))[:(1-sample_data_0)])
+    train_data_1 = data_1.take(np.random.permutation(len(data_1))[:(1-sample_data_1)])
+    train_data = pd.concat([train_data_0, train_data_1], axis=0)
+
+    test_data_0 = data_0.take(np.random.permutation(len(data_0))[:sample_data_0])
+    test_data_1 = data_1.take(np.random.permutation(len(data_1))[:sample_data_1])
+    test_data = pd.concat([test_data_0, test_data_1], axis=0)
+
+    return train_data, test_data
 
 def check_decision(og_data):
     data = og_data.copy()

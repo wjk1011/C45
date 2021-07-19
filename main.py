@@ -11,10 +11,10 @@ if __name__ == '__main__':
         print("Validation set case")
         df = pd.read_csv("dataset/please_small.csv")
         print(df)
-        train_data, test_data = cb.train_test_split(df)
+        train_data, test_data = cb.data_split(df, 0.4)
         config = {'algorithm': 'C4.5', 'enableParallelism': enableParallelism}
 
-        model = cb.fit(train_data, config, validation_df=test_data)
+        model = cb.fit(train_data, config,  target_label='Decision', validation_df=test_data)
 
     print("-------------------------")
     print("unit tests completed successfully...")
