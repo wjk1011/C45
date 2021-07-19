@@ -84,12 +84,11 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
     print('Time of fit: ', time.time() - time_start_fit)
     config = functions.initializeParams(config)
     functions.initializeFolders()
-    # rules.py 저장 필요 X
 
     # ------------------------
     algorithm = config['algorithm']
 
-    valid_algorithms = ['ID3', 'C4.5', 'CART', 'CHAID', 'Regression']
+    valid_algorithms = ['ID3', 'C4.5']
 
     if algorithm not in valid_algorithms:
         raise ValueError('Invalid algorithm passed. You passed ', algorithm, " but valid algorithms are ",
@@ -99,16 +98,13 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
 
     enableParallelism = config['enableParallelism']
     # ------------------------
-    if enableParallelism == True:
+    if enableParallelism:
         print("[INFO]: ", config["num_cores"], "CPU cores will be allocated in parallel running")
 
         from multiprocessing import set_start_method, freeze_support
         set_start_method("spawn", force=True)
         freeze_support()
     # ------------------------
-    raw_df = df.copy()
-    num_of_rows = df.shape[0]
-    num_of_columns = df.shape[1]
 
     if algorithm == 'Regression':
         if df['Decision'].dtypes == 'object':

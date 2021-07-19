@@ -48,33 +48,17 @@ def initializeFolders():
 
 def initializeParams(config):
     time_start_initialize = time.time()
-    algorithm = 'ID3'
-
     enableParallelism = True
     num_cores = int(multiprocessing.cpu_count() / 2)  # allocate half of your total cores
-
-    # 코어의 개수를 왜 /2했을까?
 
     # num_cores = int((3*multiprocessing.cpu_count())/4) #allocate 3/4 of your total cores
     # num_cores = multiprocessing.cpu_count()
 
     for key, value in config.items():
-        if key == 'algorithm':
-            algorithm = value
-        # ---------------------------------
-
-        # ---------------------------------
-
-        # ---------------------------------
-
-        # ---------------------------------
-        elif key == 'enableParallelism':
+        if key == 'enableParallelism':
             enableParallelism = value
         elif key == 'num_cores':
             num_cores = value
-
-    config['algorithm'] = algorithm
-
     config['enableParallelism'] = enableParallelism
     config['num_cores'] = num_cores
     time_end_initialize = time.time()
