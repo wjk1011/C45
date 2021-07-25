@@ -8,7 +8,6 @@ import multiprocessing.pool
 import pandas as pd
 import psutil
 import gc
-import time
 import Preprocess
 import functions
 
@@ -40,27 +39,21 @@ class MyPool(multiprocessing.pool.Pool):
 
 
 # ----------------------------------------
-def calculateEntropy(df, config):
+def  calculateEntropy(data, attribute, config):
     algorithm = config['algorithm']
 
     # --------------------------
 
-    if algorithm == 'Regression':
-        return 0
-
-    # print(df)
-
-    instances = df.shape[0];
-    columns = df.shape[1]
+    instances = len(data)
+    columns = len(attribute)
     # print(instances," rows, ",columns," columns")
 
-    decisions = df['Decision'].value_counts().keys().tolist()
+    decisions = list(set(list(map(lambda x: x.Decision, data))))
 
     entropy = 0
 
-    for i in range(0, len(decisions)):
-        decision = decisions[i]
-        num_of_decisions = df['Decision'].value_counts().tolist()[i]
+    for i in decisions:
+        num_of_decisions = list(map(lambda x: x.Decision, data)).count(i)
         # print(decision,"->",num_of_decisions)
 
         class_probability = num_of_decisions / instances
@@ -69,14 +62,17 @@ def calculateEntropy(df, config):
     return entropy
 
 
-def findDecision(df, config):
+def findDecision(data, attribute, config):
     # information gain for id3, gain ratio for c4.5, gini for cart, chi square for chaid and std for regression
     algorithm = config['algorithm']
 
-    resp_obj = findGains(df, config)
+    resp_obj, categoricalization_data = findGains(data, attribute, config)
     gains = list(resp_obj["gains"].values())
     entropy = resp_obj["entropy"]
 
+    winner_index = 0
+    metric_value = 0
+    metric_name = None
     if algorithm == "ID3":
         winner_index = gains.index(max(gains))
         metric_value = entropy
@@ -85,101 +81,60 @@ def findDecision(df, config):
         winner_index = gains.index(max(gains))
         metric_value = entropy
         metric_name = "Entropy"
-    elif algorithm == "CART":
-        winner_index = gains.index(min(gains))
-        metric_value = min(gains)
-        metric_name = "Gini"
-    elif algorithm == "CHAID":
-        winner_index = gains.index(max(gains))
-        metric_value = max(gains)
-        metric_name = "ChiSquared"
-    elif algorithm == "Regression":
-        winner_index = gains.index(max(gains))
-        metric_value = max(gains)
-        metric_name = "Std"
 
-    winner_name = df.columns[winner_index]
-    return winner_name, df.shape[0], metric_value, metric_name
+    winner_name = attribute[winner_index]
+    return winner_name, len(data), metric_value, metric_name, gains, categoricalization_data
 
 
-def findGains(df, config):
-
+def findGains(data, attribute, config):
     algorithm = config['algorithm']
-    decision_classes = df["Decision"].unique()
+    data = copy.deepcopy(data)
     # -----------------------------
     entropy = 0
     if algorithm == "ID3" or algorithm == "C4.5":
-        entropy = calculateEntropy(df, config)
-    columns = df.shape[1];
-    instances = df.shape[0]
+        entropy = calculateEntropy(data, attribute, config)
+    columns = len(attribute)
+    instances = len(data)
     gains = []
 
     for i in range(0, columns - 1):
-        column_name = df.columns[i]
-        column_type = df[column_name].dtypes
-
+        column_name = attribute[i]
+        column_type = type(data[0].__getattribute__(column_name))
+        # 이거도 걍 맨 첫 번째 값으로만 타입 확인...........
         # print(column_name,"->",column_type)
 
-        if column_type != 'object':
-            df = Preprocess.processContinuousFeatures(algorithm, df, column_name, entropy, config)
+        if column_type != str:
+            # 대부분 numpy.float 형
+            data = Preprocess.processContinuousFeatures(algorithm, data, attribute, column_name, entropy, config)
 
-        classes = df[column_name].value_counts()
+        classes = set(map(lambda x: x.__getattribute__(column_name), data))
 
         splitinfo = 0
         if algorithm == 'ID3' or algorithm == 'C4.5':
-            gain = entropy * 1
+            gain = entropy
         else:
             gain = 0
 
         for j in range(0, len(classes)):
-            current_class = classes.keys().tolist()[j]
+            current_class = list(classes)[j]
             # print(column_name,"->",current_class)
 
-            subdataset = df[df[column_name] == current_class]
+            subdataset = list(filter(lambda x:x.__getattribute__(column_name) == current_class, data))
             # print(subdataset)
 
-            subset_instances = subdataset.shape[0]
+            subset_instances = len(subdataset)
             class_probability = subset_instances / instances
 
             if algorithm == 'ID3' or algorithm == 'C4.5':
-                subset_entropy = calculateEntropy(subdataset, config)
+                subset_entropy = calculateEntropy(subdataset, attribute, config)
                 gain = gain - class_probability * subset_entropy
 
             if algorithm == 'C4.5':
                 splitinfo = splitinfo - class_probability * math.log(class_probability, 2)
 
-            elif algorithm == 'CART':  # GINI index
-                decision_list = subdataset['Decision'].value_counts().tolist()
-
-                subgini = 1
-
-                for k in range(0, len(decision_list)):
-                    subgini = subgini - math.pow((decision_list[k] / subset_instances), 2)
-
-                gain = gain + (subset_instances / instances) * subgini
-
-            elif algorithm == 'CHAID':
-                num_of_decisions = len(decision_classes)
-
-                expected = subset_instances / num_of_decisions
-
-                for d in decision_classes:
-                    num_of_d = subdataset[subdataset["Decision"] == d].shape[0]
-
-                    chi_square_of_d = math.sqrt(((num_of_d - expected) * (num_of_d - expected)) / expected)
-
-                    gain += chi_square_of_d
-
-            elif algorithm == 'Regression':
-                subset_stdev = subdataset['Decision'].std(ddof=0)
-                gain = gain + (subset_instances / instances) * subset_stdev
-
         # iterating over classes for loop end
         # -------------------------------
 
-        if algorithm == 'Regression':
-            stdev = df['Decision'].std(ddof=0)
-            gain = stdev - gain
         if algorithm == 'C4.5':
             if splitinfo == 0:
                 splitinfo = 100  # this can be if data set consists of 2 rows and current column consists of 1 class. still decision can be made (decisions for these 2 rows same). set splitinfo to very large value to make gain ratio very small. in this way, we won't find this column as the most dominant one.
@@ -194,13 +149,13 @@ def findGains(df, config):
     resp_obj = {}
     resp_obj["gains"] = {}
 
-    for idx, feature in enumerate(df.columns[0:-1]):  # Decision is always the last column
+    for idx, feature in enumerate(attribute[0:-1]):  # Decision is always the last column
         # print(idx, feature)
         resp_obj["gains"][feature] = gains[idx]
 
     resp_obj["entropy"] = entropy
 
-    return resp_obj
+    return resp_obj, data
 
 
 def createBranchWrapper(func, args):
@@ -208,7 +163,7 @@ def createBranchWrapper(func, args):
 
 
 def createBranch(config, current_class, subdataset, numericColumn, branch_index
-                 , winner_name, winner_index, root, parents, file, dataset_features, num_of_instances, metric,
+                 , winner_name, winner_index, root, parents, file, dataset_features, num_of_instances, metric, gains,
                  tree_id=0, main_process_id=None):
 
     custom_rules = []
@@ -232,18 +187,19 @@ def createBranch(config, current_class, subdataset, numericColumn, branch_index
 
     # -----------------------------------------------
     # can decision be made?
-
-    if len(subdataset['Decision'].value_counts().tolist()) == 1:
-        final_decision = subdataset['Decision'].value_counts().keys().tolist()[0]  # all items are equal in this case
-        terminateBuilding = True
-    elif subdataset.shape[1] == 1:  # if decision cannot be made even though all columns dropped
-        final_decision = subdataset['Decision'].value_counts().idxmax()  # get the most frequent one
-        terminateBuilding = True
-    elif algorithm == 'Regression' and subdataset.shape[0] < 5:  # pruning condition
-        # elif algorithm == 'Regression' and subdataset['Decision'].std(ddof=0)/global_stdev < 0.4: #pruning condition
-        final_decision = subdataset['Decision'].mean()  # get average
+    attribute = subdataset[0].__dir__()
+    attribute = attribute[0:attribute.index('Decision') + 1]
+    final_decision = None
+    if len(set(map(lambda x:x.Decision, subdataset))) == 1:
+        final_decision = list(map(lambda x:x.Decision, subdataset))[0]  # all items are equal in this case
         terminateBuilding = True
 
+    elif len(attribute) == 1:  # if decision cannot be made even though all columns dropped
+        final_decision_list = list(set((i.Decision for i in subdataset)))
+        final_decision = final_decision_list[[final_decision_list.count(i)
+                                              for i in final_decision_list].index(max([final_decision_list.count(i)
+                                                                                       for i in final_decision_list]))] # get the most frequent one
+        terminateBuilding = True
     # -----------------------------------------------
 
     if enableParallelism == True:
@@ -313,7 +269,12 @@ def createBranch(config, current_class, subdataset, numericColumn, branch_index
         root = root + 1  # the following rule will be included by this rule. increase root
         parents = copy.copy(leaf_id)
 
-        results = buildDecisionTree(subdataset, root, file, config, dataset_features
+
+        # --------------------------------------------------------
+        attribute = subdataset[0].__dir__()
+        attribute = attribute[0:attribute.index('Decision') + 1]
+        #---------------------------------------------------------
+        results = buildDecisionTree(subdataset, attribute, root, file, config, dataset_features
                                     , root - 1, leaf_id, parents, tree_id=tree_id, main_process_id=main_process_id)
 
         custom_rules = custom_rules + results
@@ -323,54 +284,51 @@ def createBranch(config, current_class, subdataset, numericColumn, branch_index
 
     gc.collect()
 
-    print
     return custom_rules
 
 
-def buildDecisionTree(df, root, file, config, dataset_features, parent_level=0, leaf_id=0, parents='root', tree_id=0,
+def buildDecisionTree(data, attribute, root, file, config, dataset_features, parent_level=0, leaf_id=0, parents='root', tree_id=0,
                       validation_df=None, main_process_id=None):
 
     models = []
 
     decision_rules = []
 
-    feature_names = df.columns[0:-1]
+    feature_names = attribute
 
     enableParallelism = config['enableParallelism']
-    algorithm = config['algorithm']
 
     json_file = file.split(".")[0] + ".json"
 
-    if root == 1:
-        raw_df = df.copy()
-
     # --------------------------------------
 
-    df_copy = df.copy()
+    data_copy = copy.deepcopy(data)
 
-    winner_name, num_of_instances, metric, metric_name = findDecision(df, config)
+    winner_name, num_of_instances, metric, metric_name, gains, categoricalization_data = findDecision(data, attribute, config)
 
     # find winner index, this cannot be returned by find decision because columns dropped in previous steps
     j = 0
+    winner_index = 0
     for i in dataset_features:
         if i == winner_name:
             winner_index = j
         j = j + 1
 
     numericColumn = False
-    if dataset_features[winner_name] != 'object':
+    if dataset_features[winner_name] != str:
         numericColumn = True
 
     # restoration
-    columns = df.shape[1]
+    columns = len(attribute)
     for i in range(0, columns - 1):
         # column_name = df.columns[i]; column_type = df[column_name].dtypes #numeric field already transformed to object. you cannot check it with df itself, you should check df_copy
-        column_name = df_copy.columns[i]
-        column_type = df_copy[column_name].dtypes
-        if column_type != 'object' and column_name != winner_name:
-            df.loc[:, column_name] = df_copy.loc[:, column_name]
-
-    classes = df[winner_name].value_counts().keys().tolist()
+        column_name = attribute[i]
+        # 이거도 걍 맨 첫 번째 값으로만 타입 확인...........
+        column_type = type(data[0].__getattribute__(attribute[i]))
+        if column_type != str and column_name != winner_name:
+            for j in range(len(data)):
+                setattr(data[j], column_name, data_copy[j])
+    classes = list(set(map(lambda x:x.__getattribute__(winner_name), categoricalization_data)))
     # print("classes: ",classes," in ", winner_name)
     # -----------------------------------------------------
 
@@ -379,30 +337,17 @@ def buildDecisionTree(df, root, file, config, dataset_features, parent_level=0, 
     input_params = []
 
     # serial approach
+    subdataset = []
     for i in range(0, len(classes)):
         current_class = classes[i]
-        subdataset = df[df[winner_name] == current_class]
-        subdataset = subdataset.drop(columns=[winner_name])
-        branch_index = i * 1
+        subdataset = list(filter(lambda x:x.__getattribute__(winner_name) == current_class if hasattr(x, winner_name) is True else None, categoricalization_data))
+        for j in subdataset:
+            delattr(j, winner_name)
+        branch_index = i
 
         # create branches serially
-        if enableParallelism != True:
-            if i == 0:
-                descriptor = {
-                    "feature": winner_name,
-                    "instances": num_of_instances,
-                    # "metric_name": metric_name,
-                    "metric_value": round(metric, 4),
-                    "depth": parent_level + 1
-                }
-                descriptor = "# " + json.dumps(descriptor)
-                functions.storeRule(file, (functions.formatRule(root), "", descriptor))
-            results = createBranch(config, current_class, subdataset, numericColumn, branch_index
-                                   , winner_name, winner_index, root, parents, file, dataset_features, num_of_instances,
-                                   metric, tree_id=tree_id, main_process_id=main_process_id)
-            decision_rules = decision_rules + results
 
-        else:
+        if enableParallelism is True:
             input_params.append((config, current_class, subdataset, numericColumn, branch_index
                                  , winner_name, winner_index, root, parents, file, dataset_features, num_of_instances,
                                  metric, tree_id, main_process_id))
@@ -410,12 +355,14 @@ def buildDecisionTree(df, root, file, config, dataset_features, parent_level=0, 
     # ---------------------------
     # add else condition in the decision tree
 
-    if df.Decision.dtypes == 'object':  # classification
-        pivot = pd.DataFrame(subdataset.Decision.value_counts()).reset_index()
-        pivot = pivot.rename(columns={"Decision": "Instances", "index": "Decision"})
-        pivot = pivot.sort_values(by=["Instances"], ascending=False).reset_index()
 
-        else_decision = "return '%s'" % (pivot.iloc[0].Decision)
+    # 이거도 첫 번째 값만 타입 확인,,,,,,,,,,,,,,,,,,,,,
+    if type(list(map(lambda x:x.Decision, data))[0]) == str:  # classification
+        data = [list(set(map(lambda x:x.Decision, subdataset))),[]]
+        for i in data[0]:
+            data[1].append(len(list(filter(lambda x:x.Decision == i, subdataset))))
+
+        else_decision = "return '%s'" % (data[0][0])
 
         if enableParallelism != True:
             functions.storeRule(file, (functions.formatRule(root), "else:"))
@@ -432,7 +379,7 @@ def buildDecisionTree(df, root, file, config, dataset_features, parent_level=0, 
             sample_rule["rule"] = check_rule
             sample_rule["feature_idx"] = -1
             sample_rule["feature_name"] = ""
-            sample_rule["instances"] = df.shape[0]
+            sample_rule["instances"] = len(data)
             sample_rule["metric"] = 0
             sample_rule["return_statement"] = 0
             sample_rule["tree_id"] = tree_id
@@ -441,31 +388,6 @@ def buildDecisionTree(df, root, file, config, dataset_features, parent_level=0, 
             sample_rule = json.dumps(sample_rule)
             decision_rules.append(sample_rule)
 
-    else:  # regression
-        else_decision = "return %s" % (subdataset.Decision.mean())
-
-        if enableParallelism != True:
-            functions.storeRule(file, (functions.formatRule(root), "else:"))
-            functions.storeRule(file, (functions.formatRule(root + 1), else_decision))
-        else:
-            leaf_id = str(uuid.uuid1())
-
-            check_rule = "else: " + else_decision
-
-            sample_rule = {}
-            sample_rule["current_level"] = root
-            sample_rule["leaf_id"] = leaf_id
-            sample_rule["parents"] = parents
-            sample_rule["rule"] = check_rule
-            sample_rule["tree_id"] = tree_id
-            sample_rule["feature_name"] = ""
-            sample_rule["instances"] = 0
-            sample_rule["metric"] = 0
-            sample_rule["return_statement"] = 1
-
-            # json to string
-            sample_rule = json.dumps(sample_rule)
-            decision_rules.append(sample_rule)
 
     # ---------------------------
 
@@ -666,7 +588,7 @@ def reconstructRules(source, feature_names, tree_id=0):
 
     def extractRules(df, parent='root', level=1):
 
-        level_raw = level * 1;
+        level_raw = level * 1
         parent_raw = copy.copy(parent)
 
         else_rule = ""
