@@ -3,15 +3,18 @@ import os
 from os import path
 import multiprocessing
 import CB as cb
+import numpy as np
 
-def bulk_prediction(df, model):
+def bulk_prediction(data, model):
     predictions = []
 
-    for index, instance in df.iterrows():
-        features = instance.values[0:-1]
+    for instance in data:
+        attribute = data[0].__dir__()
+        attribute = attribute[0:attribute.index('Decision') + 1]
+        features = np.array(list(map(lambda x:x.__getattr__(i), instance) for i in attribute))
         prediction = cb.predict(model, features)
         predictions.append(prediction)
-    df['Prediction'] = predictions
+    data['Prediction'] = predictions
 
 
 def initializeFolders():

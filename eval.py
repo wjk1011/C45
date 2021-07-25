@@ -1,15 +1,15 @@
 import math
 
 
-def evaluate(df, task='train'):
-    if df['Decision'].dtypes == 'object':
+def evaluate(data, task='train'):
+    if type(data[0].Decision) == str:
         problem_type = 'classification'
     else:
         problem_type = 'regression'
 
     # -------------------------------------
 
-    instances = df.shape[0]
+    instances = len(data)
 
     print("-------------------------")
     print("Evaluate ", task, "set")
@@ -17,38 +17,23 @@ def evaluate(df, task='train'):
 
     if problem_type == 'classification':
 
-        idx = df[df['Prediction'] == df['Decision']].index
-        accuracy = 100 * len(idx) / df.shape[0]
+        idx = list(filter(lambda x: x.Decision == x.Prediction, data))
+        accuracy = 100 * len(idx) / len(data)
         print("Accuracy: ", accuracy, "% on ", instances, " instances")
 
         # -----------------------------
 
-        predictions = df.Prediction.values
-        actuals = df.Decision.values
+        predictions = list(map(lambda x:x.Prediction, data))
+        actuals = list(map(lambda x:x.Decision, data))
 
         # -----------------------------
         # confusion matrix
 
         # labels = df.Prediction.unique()
-        labels = df.Decision.unique()
+        labels = list(set(map(lambda x:x.Decision, data)))
 
-        confusion_matrix = []
-        for prediction_label in labels:
-            confusion_row = []
-            for actual_label in labels:
-                item = len(df[(df['Prediction'] == prediction_label)
-                              & (df['Decision'] == actual_label)]['Decision'].values)
-                confusion_row.append(item)
-            confusion_matrix.append(confusion_row)
-
-        print("Labels: ", labels)
-        print("Confusion matrix: ", confusion_matrix)
-
-        # -----------------------------
-        # precision and recall
-
+        confusion_matrix = [[0, 0],[0, 0]]
         for decision_class in labels:
-
             fp = 0
             fn = 0
             tp = 0
@@ -56,7 +41,6 @@ def evaluate(df, task='train'):
             for i in range(0, len(predictions)):
                 prediction = predictions[i]
                 actual = actuals[i]
-
                 if actual == decision_class and prediction == decision_class:
                     tp = tp + 1
                 elif actual != decision_class and prediction != decision_class:
@@ -65,6 +49,10 @@ def evaluate(df, task='train'):
                     fp = fp + 1
                 elif actual == decision_class and prediction != decision_class:
                     fn = fn + 1
+            confusion_matrix[0][0] += tp
+            confusion_matrix[0][1] += fn
+            confusion_matrix[1][0] += fp
+            confusion_matrix[1][1] += tn
 
             epsilon = 0.0000001  # to avoid divison by zero exception
             precision = round(100 * tp / (tp + fp + epsilon), 4)
@@ -81,8 +69,16 @@ def evaluate(df, task='train'):
 
             if len(labels) < 3:
                 break
+        print("Labels: ", labels)
+        print("Confusion matrix: ", confusion_matrix)
+
+        # -----------------------------
+        # precision and recall
+
+
 
     # -------------------------------------
+    """
     else:
 
         df['Absolute_Error'] = abs(df['Prediction'] - df['Decision'])
@@ -124,3 +120,4 @@ def evaluate(df, task='train'):
             if mean > 0:
                 print("MAE / Mean: ", 100 * mae / mean, "%")
                 print("RMSE / Mean: ", 100 * rmse / mean, "%")
+    """

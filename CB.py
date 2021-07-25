@@ -5,55 +5,14 @@ import os
 import functions
 import eval
 import Training
+import copy
 
-def fit(df, config={}, attribute=[], target_label='Decision', validation_df=None):
+
+def fit(data, config={}, attribute=[], target_label='Decision', validation_df=None):
     time_start_fit = time.time()
-    """
-    Parameters:
-        df (pandas data frame): Training data frame. The target column must be named as 'Decision' and it has to be in the last column
-
-        config (dictionary):
-
-            config = {
-                'algorithm' (string): ID3, 'C4.5, CART, CHAID or Regression
-                'enableParallelism' (boolean): False
-                # rule.py 저장 on/off
-            }
-
-        validation_df (pandas data frame): if nothing is passed to validation data frame, then the function validates built trees for training data frame
-
-    Returns:
-        chefboost model
-    """
-    # ------------------------
-
     process_id = os.getpid()
 
-    # ------------------------
-    """
-    # rename target column name
-    if target_label != 'Decision':
-        df = df.rename(columns={target_label: 'Decision'})
-
-    # if target is not the last column
-    if df.columns[-1] != 'Decision':
-        new_column_order = df.columns.drop('Decision').tolist() + ['Decision']
-        print(new_column_order)
-        df = df[new_column_order]
-    # ------------------------
-    """
-    base_df = df.copy()
-    """
-    # ------------------------
-
-    target_label = df.columns[len(df.columns) - 1]
-    if target_label != 'Decision':
-        print("Expected: Decision, Existing: ", target_label)
-        raise ValueError(
-            'Please confirm that name of the target column is "Decision" and it is put to the right in pandas data frame')
-    """
-    # ------------------------
-    # handle NaN values
+    base_data = copy.deepcopy(data)
 
     nan_values = []
     """
@@ -75,7 +34,6 @@ def fit(df, config={}, attribute=[], target_label='Decision', validation_df=None
 
             nan_values.append(nan_value)
     """
-    # ------------------------
 
     # initialize params and folders
 
@@ -104,26 +62,6 @@ def fit(df, config={}, attribute=[], target_label='Decision', validation_df=None
         freeze_support()
     # ------------------------
 
-    if algorithm == 'Regression':
-        if type(list(map(lambda x:x.Decision, df))[0]) == 'str':
-            # Decision 값들 중 첫 번째 값이 str 인지만 판단하기 때문에 보완해야함
-            raise ValueError(
-                'Regression trees cannot be applied for nominal target values! You can either change the algorithm or data set.')
-
-    if type(list(map(lambda x:x.Decision, df))[0]) is not str:  # this must be regression tree even if it is not mentioned in algorithm
-        print(1)
-        # Decision 값들 중 첫 번째 값이 str 인지만 판단하기 때문에 보완해야함
-        if algorithm != 'Regression':
-            print("WARNING: You set the algorithm to ", algorithm,
-                  " but the Decision column of your data set has non-object type.")
-            print("That's why, the algorithm is set to Regression to handle the data set.")
-
-        algorithm = 'Regression'
-        config['algorithm'] = 'Regression'
-        #global_stdev = df.Decision.std(ddof=0)
-
-    # -------------------------
-
     print(algorithm, " tree is going to be built...")
 
     dataset_features = dict()  # initialize a dictionary. this is going to be used to check features numeric or nominal. numeric features should be transformed to nominal values based on scales.
@@ -132,11 +70,9 @@ def fit(df, config={}, attribute=[], target_label='Decision', validation_df=None
 
     num_of_columns = len(attribute) - 1
 
-
-
     for i in range(0, num_of_columns):
         column_name = attribute[i]
-        dataset_features[column_name] = type(df[0].__getattribute__(attribute[i]))
+        dataset_features[column_name] = type(data[0].__getattribute__(attribute[i]))
         header = header + "obj[" + str(i) + "]: " + column_name
         if i != num_of_columns - 1:
             header = header + ", "
@@ -146,7 +82,6 @@ def fit(df, config={}, attribute=[], target_label='Decision', validation_df=None
     # ------------------------
     begin = time.time()
 
-    trees = []
     alphas = []
 
     root = 1
@@ -157,9 +92,9 @@ def fit(df, config={}, attribute=[], target_label='Decision', validation_df=None
         json_file = "outputs/rules/rules.json"
         functions.createFile(json_file, "[\n")
 
-    trees = Training.buildDecisionTree(df, attribute, root=root, file=file, config=config
+    trees = Training.buildDecisionTree(data, attribute, root=root, file=file, config=config
                                        , dataset_features=dataset_features
-                                       , parent_level=0, leaf_id=0, parents='root', validation_df = validation_df,
+                                       , parent_level=0, leaf_id=0, parents='root', validation_df=validation_df,
                                        main_process_id=process_id)
 
     print("-------------------------")
@@ -175,12 +110,16 @@ def fit(df, config={}, attribute=[], target_label='Decision', validation_df=None
     # -----------------------------------------
 
     # train set accuracy
-    df = base_df.copy()
-    evaluate(obj, df, task='train')
+    for i in base_data:
+        param = np.array([i.__getattribute__(j) for j in attribute[0:-1]])
+        setattr(i, 'Prediction', obj['trees'][0].findDecision(param))
+    eval.evaluate(base_data, task='train')
 
     # validation set accuracy
-    if isinstance(validation_df, pd.DataFrame):
-        evaluate(obj, validation_df, task='validation')
+    for i in validation_df:
+        param = np.array([i.__getattribute__(j) for j in attribute[0:-1]])
+        setattr(i, 'Prediction', obj['trees'][0].findDecision(param))
+    eval.evaluate(validation_df, task='validation')
 
     # -----------------------------------------
 
@@ -190,15 +129,6 @@ def fit(df, config={}, attribute=[], target_label='Decision', validation_df=None
 # -----------------------------------------
 
 def predict(model, param):
-    """
-	Parameters:
-		model (built chefboost model): you should pass model argument to the return of fit function
-		param (list): pass input features as python list
-
-		e.g. chef.predict(model, param = ['Sunny', 'Hot', 'High', 'Weak'])
-	Returns:
-		prediction
-	"""
 
     trees = model["trees"]
     config = model["config"]
@@ -214,6 +144,7 @@ def predict(model, param):
     # -----------------------
     # handle missing values
 
+    """
     column_index = 0
     for column in nan_values:
         column_name = column[0]
@@ -226,19 +157,13 @@ def predict(model, param):
                 param[column_index] = missing_value
 
         column_index = column_index + 1
-
+    """
     # print("instance: ", param)
-    # -----------------------
-
     # -----------------------
 
     classification = False
     prediction = 0
     prediction_classes = []
-
-    # -----------------------
-
-    # -----------------------
 
     if len(trees) > 1:  # bagging or boosting
         index = 0
@@ -274,34 +199,6 @@ def predict(model, param):
         return prediction
 
 
-def evaluate(model, df, target_label='Decision', task='test'):
-    """
-    Parameters:
-        model (built chefboost model): you should pass the return of fit function
-        df (pandas data frame): data frame you would like to evaluate
-        task (string): optionally you can pass this train, validation or test
-    :param task:
-    :param df:
-    :param model:
-    :param target_label:
-    """
-
-    # --------------------------
-
-    if target_label != 'Decision':
-        df = df.rename(columns={target_label: 'Decision'})
-
-    # if target is not the last column
-    if df.columns[-1] != 'Decision':
-        new_column_order = df.columns.drop('Decision').tolist() + ['Decision']
-        print(new_column_order)
-        df = df[new_column_order]
-
-    # --------------------------
-
-    functions.bulk_prediction(df, model)
-
-    eval.evaluate(df, task=task)
 
 
 def data_split(data, _portion: float):
