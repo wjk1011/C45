@@ -5,10 +5,8 @@ import os
 import functions
 import eval
 import Training
-from sklearn.model_selection import train_test_split
 
-
-def fit(df, config={}, target_label='Decision', validation_df=None):
+def fit(df, config={}, attribute=[], target_label='Decision', validation_df=None):
     time_start_fit = time.time()
     """
     Parameters:
@@ -32,6 +30,7 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
     process_id = os.getpid()
 
     # ------------------------
+    """
     # rename target column name
     if target_label != 'Decision':
         df = df.rename(columns={target_label: 'Decision'})
@@ -42,9 +41,9 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
         print(new_column_order)
         df = df[new_column_order]
     # ------------------------
-
+    """
     base_df = df.copy()
-
+    """
     # ------------------------
 
     target_label = df.columns[len(df.columns) - 1]
@@ -52,12 +51,12 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
         print("Expected: Decision, Existing: ", target_label)
         raise ValueError(
             'Please confirm that name of the target column is "Decision" and it is put to the right in pandas data frame')
-
+    """
     # ------------------------
     # handle NaN values
 
     nan_values = []
-
+    """
     for column in df.columns:
         if df[column].dtypes != 'object':
             min_value = df[column].min()
@@ -73,10 +72,9 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
             else:
                 nan_value.append(None)
 
-            # min_value - 1을 넣는 이유? ( fillna(min_value-1) )
 
             nan_values.append(nan_value)
-
+    """
     # ------------------------
 
     # initialize params and folders
@@ -107,12 +105,14 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
     # ------------------------
 
     if algorithm == 'Regression':
-        if df['Decision'].dtypes == 'object':
+        if type(list(map(lambda x:x.Decision, df))[0]) == 'str':
+            # Decision 값들 중 첫 번째 값이 str 인지만 판단하기 때문에 보완해야함
             raise ValueError(
                 'Regression trees cannot be applied for nominal target values! You can either change the algorithm or data set.')
 
-    if df['Decision'].dtypes != 'object':  # this must be regression tree even if it is not mentioned in algorithm
-
+    if type(list(map(lambda x:x.Decision, df))[0]) is not str:  # this must be regression tree even if it is not mentioned in algorithm
+        print(1)
+        # Decision 값들 중 첫 번째 값이 str 인지만 판단하기 때문에 보완해야함
         if algorithm != 'Regression':
             print("WARNING: You set the algorithm to ", algorithm,
                   " but the Decision column of your data set has non-object type.")
@@ -120,7 +120,7 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
 
         algorithm = 'Regression'
         config['algorithm'] = 'Regression'
-        global_stdev = df['Decision'].std(ddof=0)
+        #global_stdev = df.Decision.std(ddof=0)
 
     # -------------------------
 
@@ -130,10 +130,13 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
 
     header = "def findDecision(obj): #"
 
-    num_of_columns = df.shape[1] - 1
+    num_of_columns = len(attribute) - 1
+
+
+
     for i in range(0, num_of_columns):
-        column_name = df.columns[i]
-        dataset_features[column_name] = df[column_name].dtypes
+        column_name = attribute[i]
+        dataset_features[column_name] = type(df[0].__getattribute__(attribute[i]))
         header = header + "obj[" + str(i) + "]: " + column_name
         if i != num_of_columns - 1:
             header = header + ", "
@@ -154,9 +157,9 @@ def fit(df, config={}, target_label='Decision', validation_df=None):
         json_file = "outputs/rules/rules.json"
         functions.createFile(json_file, "[\n")
 
-    trees = Training.buildDecisionTree(df, root=root, file=file, config=config
+    trees = Training.buildDecisionTree(df, attribute, root=root, file=file, config=config
                                        , dataset_features=dataset_features
-                                       , parent_level=0, leaf_id=0, parents='root', validation_df=validation_df,
+                                       , parent_level=0, leaf_id=0, parents='root', validation_df = validation_df,
                                        main_process_id=process_id)
 
     print("-------------------------")
@@ -300,6 +303,7 @@ def evaluate(model, df, target_label='Decision', task='test'):
 
     eval.evaluate(df, task=task)
 
+
 def data_split(data, _portion: float):
     target_unique = data['Decision'].unique()
     data_0 = data[data['Decision'] == target_unique[0]]
@@ -308,8 +312,8 @@ def data_split(data, _portion: float):
     sample_data_0 = int(len(data_0) * _portion)
     sample_data_1 = int(len(data_1) * _portion)
 
-    train_data_0 = data_0.take(np.random.permutation(len(data_0))[:(1-sample_data_0)])
-    train_data_1 = data_1.take(np.random.permutation(len(data_1))[:(1-sample_data_1)])
+    train_data_0 = data_0.take(np.random.permutation(len(data_0))[:(1 - sample_data_0)])
+    train_data_1 = data_1.take(np.random.permutation(len(data_1))[:(1 - sample_data_1)])
     train_data = pd.concat([train_data_0, train_data_1], axis=0)
 
     test_data_0 = data_0.take(np.random.permutation(len(data_0))[:sample_data_0])
@@ -317,6 +321,7 @@ def data_split(data, _portion: float):
     test_data = pd.concat([test_data_0, test_data_1], axis=0)
 
     return train_data, test_data
+
 
 def check_decision(og_data):
     data = og_data.copy()

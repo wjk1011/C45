@@ -3,19 +3,19 @@ import math
 import Training
 
 
-def processContinuousFeatures(algorithm, df, column_name, entropy, config):
+def processContinuousFeatures(algorithm, df, attribute, column_name, entropy, config):
     # if True:
-    if df[column_name].nunique() <= 20:  # 칼럼별 고유값의 개수
-        unique_values = sorted(df[column_name].unique())
+    if len(set(map(lambda x: x.__getattribute__(column_name), df))) <= 20:  # 칼럼별 고유값의 개수
+        unique_values = np.array(sorted(set(map(lambda x: x.__getattribute__(column_name), df))))
     else:
         unique_values = []
-        df_mean = df[column_name].mean()
-        df_std = df[column_name].std(ddof=0)
-        df_min = df[column_name].min()
-        df_max = df[column_name].max()
-        unique_values.append(df[column_name].min())
-        unique_values.append(df[column_name].max())
-        unique_values.append(df[column_name].mean())
+        df_mean = np.array(list(map(lambda x: x.__getattribute__(column_name), df))).mean()
+        df_std = np.array(list(map(lambda x: x.__getattribute__(column_name), df))).std(ddof=0)
+        df_min = np.array(list(map(lambda x: x.__getattribute__(column_name), df))).min()
+        df_max = np.array(list(map(lambda x: x.__getattribute__(column_name), df))).max()
+        unique_values.append(df_min)
+        unique_values.append(df_max)
+        unique_values.append(df_mean)
         scales = list(range(-3, +4, 1))
         for scale in scales:
             if df_min < df_mean + scale * df_std < df_max:
@@ -30,27 +30,30 @@ def processContinuousFeatures(algorithm, df, column_name, entropy, config):
 
     if len(unique_values) == 1:
         winner_threshold = unique_values[0]
-        df[column_name] = np.where(df[column_name] <= winner_threshold, "<=" + str(winner_threshold),
-                                   ">" + str(winner_threshold))
+        for i in df:
+            if i.__getattribute__(column_name) <= winner_threshold:
+                setattr(i, column_name, "<=" + str(winner_threshold))
+            else:
+                setattr(i, column_name, ">" + str(winner_threshold))
         return df
 
+    # ------------------------------------
     for i in range(0, len(unique_values) - 1):
         threshold = unique_values[i]
+        subset1 = list(filter(lambda x: x.__getattribute__(column_name) <= threshold, df))
+        subset2 = list(filter(lambda x: x.__getattribute__(column_name) > threshold, df))
 
-        subset1 = df[df[column_name] <= threshold]
-        subset2 = df[df[column_name] > threshold]
-
-        subset1_rows = subset1.shape[0]
-        subset2_rows = subset2.shape[0]
-        total_instances = df.shape[0]  # subset1_rows+subset2_rows
+        subset1_rows = len(subset1)
+        subset2_rows = len(subset2)
+        total_instances = len(df)  # subset1_rows+subset2_rows
 
         subset1_probability = subset1_rows / total_instances
         subset2_probability = subset2_rows / total_instances
 
         if algorithm == 'ID3' or algorithm == 'C4.5':
-            threshold_gain = entropy - subset1_probability * Training.calculateEntropy(subset1,
+            threshold_gain = entropy - subset1_probability * Training.calculateEntropy(subset1, attribute,
                                                                                        config) - subset2_probability * Training.calculateEntropy(
-                subset2, config)
+                subset2, attribute, config)
             subset_gains.append(threshold_gain)
 
         if algorithm == 'C4.5':  # C4.5 also need gain in the block above. That's why, instead of else if we used direct if condition here
@@ -62,6 +65,9 @@ def processContinuousFeatures(algorithm, df, column_name, entropy, config):
             subset_gainratios.append(gainratio)
 
         # ----------------------------------
+
+        # 회귀는 다음에 합시다...
+        """
         elif algorithm == 'Regression':
             superset_stdev = df['Decision'].std(ddof=0)
             subset1_stdev = subset1['Decision'].std(ddof=0)
@@ -71,7 +77,7 @@ def processContinuousFeatures(algorithm, df, column_name, entropy, config):
                         subset2_rows / total_instances) * subset2_stdev
             threshold_reducted_stdev = superset_stdev - threshold_weighted_stdev
             subset_red_stdevs.append(threshold_reducted_stdev)
-
+        """
     # ----------------------------------
 
     if algorithm == "C4.5":
@@ -85,7 +91,10 @@ def processContinuousFeatures(algorithm, df, column_name, entropy, config):
     # print(column_name,": ", winner_threshold," in ", unique_values)
 
     # print("theshold is ",winner_threshold," for ",column_name)
-    df.loc[:, column_name] = np.where(df.loc[:, column_name] <= winner_threshold, "<=" + str(winner_threshold),
-                                      ">" + str(winner_threshold))
+    for i in df:
+        if i.__getattribute__(column_name) <= winner_threshold:
+            setattr(i, column_name, "<=" + str(winner_threshold))
+        else:
+            setattr(i, column_name, ">" + str(winner_threshold))
 
     return df
