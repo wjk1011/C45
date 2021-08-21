@@ -6,15 +6,16 @@ import time
 
 
 def buildDecisionTree(data, attribute, config, start=True, max_depth=3):
-    origin_data = copy.deepcopy(data)  # returnToOriginData 을 위해 원형 데이터 보존 필요
-    winner_attribute = findGains(data, attribute, config)  # branch 에 쓰일 attribute 선택 / instance 에서 연속형 변수들 범주형으로 변함
-    classes = list(set(map(lambda x: x.__getattribute__(winner_attribute.name), data)))
+    winner_attribute, data = findGains(data, attribute, config)  # branch 에 쓰일 attribute 선택 / instance 에서 연속형 변수들 범주형으로 변함
+    if winner_attribute.type is 'Continuous':
+        classes = list(set(map(lambda x: x.winner, data)))
+    else:
+        classes = list(set(map(lambda x: x.__getattribute__(winner_attribute.name), data)))
 
     # =========================================
 
     leaf_list = []  # 모든 leaf
     result_leaf = []  # terminateBuilding 이 True 인 leaf
-    start_time = time.time()
     if start:
 
         # =========================================
@@ -23,18 +24,16 @@ def buildDecisionTree(data, attribute, config, start=True, max_depth=3):
             _leaf = data_load.Leaf()
             if winner_attribute.type is 'Continuous':
                 _leaf.rule += 'obj.' + str(winner_attribute.name) + ' ' + str(classes[_index])
-            if winner_attribute.type is 'Categorical':
+                processed_data = list(filter(lambda x: x.winner == classes[_index], data))
+            else:
                 _leaf.rule += 'obj.' + str(winner_attribute.name) + ' is ' + "'" + str(classes[_index]) + "'"
-            processed_data = list(filter(lambda x: x.__getattribute__(winner_attribute.name) == classes[_index], data))
-
-            # =========================================
-
-            returnToOriginData(processed_data, origin_data)  # instance 에서 연속형 변수들이 범주형으로 변한 걸 원상태로 되돌림
+                processed_data = list(filter(lambda x: x.__getattribute__(winner_attribute.name) == classes[_index], data))
 
             # =========================================
 
             _leaf.dataset = processed_data  # parent leaf 의 데이터 에서 child leaf 로 branch 된 데이터만 가져감
-
+            for i in _leaf.dataset:
+                data.remove(i)
             # =========================================
 
             if winner_attribute.type is 'Categorical':  # 이번 branch 에 쓰인 attribute 가 범주형이면 그 attribute 는 삭제
@@ -52,23 +51,18 @@ def buildDecisionTree(data, attribute, config, start=True, max_depth=3):
             _leaf.branch += 1
             leaf_list.append(_leaf)  # 모든 leaf 는 leaf_list 에 들어감
 
-        start = False
-
     # =========================================
-
-    origin_data2 = copy.deepcopy(origin_data)  # copy 가 헷갈려서 line 62 에서 처럼 copy 를 반복하고 있음
     while len(set(filter(lambda x: x.terminateBuilding is False, leaf_list))) >= 1:
         for _leaf in list(filter(lambda x: x.terminateBuilding is False, leaf_list)):  # 이제부터 _leaf 는 parent leaf 로 생각하면 됩니다.
 
             # =========================================
 
-            origin_data = copy.deepcopy(origin_data2)
-            returnToOriginData(_leaf.dataset, origin_data)
+            winner_attribute, _leaf.dataset = findGains(_leaf.dataset, attribute, config)
+            if winner_attribute.type is 'Continuous':
+                classes = list(set(map(lambda x: x.winner, _leaf.dataset)))
 
-            # =========================================
-
-            winner_attribute = findGains(_leaf.dataset, attribute, config)
-            classes = list(set(map(lambda x: x.__getattribute__(winner_attribute.name), _leaf.dataset)))
+            else:
+                classes = list(set(map(lambda x: x.__getattribute__(winner_attribute.name), _leaf.dataset)))
 
             # =========================================
 
@@ -77,15 +71,12 @@ def buildDecisionTree(data, attribute, config, start=True, max_depth=3):
                 _child_leaf.branch = _leaf.branch + 1
                 _child_leaf.rule = _leaf.rule + ' and '  # parent leaf 의 rule 을 그대로 이어 적기 위해 가져옴
                 if winner_attribute.type is 'Continuous':
-                    _child_leaf.rule += 'obj.' + str(winner_attribute.name)  + str(classes[_index])
-                if winner_attribute.type is 'Categorical':
+                    _child_leaf.rule += 'obj.' + str(winner_attribute.name) + str(classes[_index])
+                    processed_data = list(filter(lambda x: x.winner == classes[_index], _leaf.dataset))
+                else:
                     _child_leaf.rule += 'obj.' + str(winner_attribute.name) + ' is ' + "'" + str(classes[_index]) + "'"
-                processed_data = list(
-                    filter(lambda x: x.__getattribute__(winner_attribute.name) == classes[_index], _leaf.dataset))
-
-                # =========================================
-
-                #returnToOriginData(processed_data, origin_data)
+                    processed_data = list(
+                        filter(lambda x: x.__getattribute__(winner_attribute.name) == classes[_index], _leaf.dataset))
 
                 # =========================================
 
@@ -127,12 +118,6 @@ def buildDecisionTree(data, attribute, config, start=True, max_depth=3):
             # =========================================
     return result_leaf
 
-def returnToOriginData(processed_data, origin_data):
-    id_list = [i.id for i in processed_data]
-    for i in range(len(id_list)):
-        processed_data[i] = list(filter(lambda x: x.id == id_list[i], origin_data))[0]
-
-
 
 def findGains(data, attribute, config):
     gains = []
@@ -142,14 +127,9 @@ def findGains(data, attribute, config):
     for _index in range(len(attribute) - 1):
         if attribute[_index].type is 'Continuous':
             data = processContinuousFeatures(data, attribute[_index], entropy, config)
-
-        # =========================================
-
-        #if attribute[_index].type is 'Categorical':
-        #    if attribute[_index].name not in data[0].usedCategorical:
-        #        classes = set(map(lambda x:x.__getattribute__(attribute[_index].name), data))
-
-        classes = set(map(lambda x: x.__getattribute__(attribute[_index].name), data))
+            classes = set(map(lambda x: x.winner, data))
+        else:
+            classes = set(map(lambda x: x.__getattribute__(attribute[_index].name), data))
 
         # =========================================
 
@@ -161,8 +141,10 @@ def findGains(data, attribute, config):
 
         for j in range(0, len(classes)):
             current_class = list(classes)[j]
-
-            subdataset = list(filter(lambda x: x.__getattribute__(attribute[_index].name) == current_class, data))
+            if attribute[_index].type is 'Continuous':
+                subdataset = list(filter(lambda x: x.winner == current_class, data))
+            else:
+                subdataset = list(filter(lambda x: x.__getattribute__(attribute[_index].name) == current_class, data))
 
             subset_instances = len(subdataset)
             class_probability = subset_instances / len(data)
@@ -187,8 +169,9 @@ def findGains(data, attribute, config):
         winner_index = gains.index(max(gains))
 
     winner_attribute = attribute[winner_index]
-    return winner_attribute
-
+    if winner_attribute.type is 'Continuous':
+        data = processContinuousFeatures(data, winner_attribute, entropy, config)
+    return winner_attribute, data
 
 
 def calculateEntropy(data, config):
@@ -222,9 +205,9 @@ def processContinuousFeatures(data, attribute, entropy, config):
         winner_threshold = unique_values[0]
         for i in data:
             if i.__getattribute__(attribute.name) <= winner_threshold:
-                setattr(i, attribute.name, "<=" + str(winner_threshold))
+                i.winner = "<=" + str(winner_threshold)
             else:
-                setattr(i, attribute.name, ">" + str(winner_threshold))
+                i.winner = ">" + str(winner_threshold)
         return data
 
     for i in range(0, len(unique_values) - 1):
@@ -264,8 +247,8 @@ def processContinuousFeatures(data, attribute, entropy, config):
     winner_threshold = unique_values[winner_one]
     for i in data:
         if i.__getattribute__(attribute.name) <= winner_threshold:
-            setattr(i, attribute.name, "<=" + str(winner_threshold))
+            i.winner = "<=" + str(winner_threshold)
         else:
-            setattr(i, attribute.name, ">" + str(winner_threshold))
+            i.winner = ">" + str(winner_threshold)
 
     return data

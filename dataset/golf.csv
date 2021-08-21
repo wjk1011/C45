@@ -1,4 +1,4 @@
-Outlook,Temp.,Humidity,Wind,Decision
+Outlook,Temp,Humidity,Wind,Decision
 Sunny,Hot,High,Weak,No
 Sunny,Hot,High,Strong,No
 Overcast,Hot,High,Weak,Yes

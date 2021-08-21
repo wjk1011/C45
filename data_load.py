@@ -3,6 +3,7 @@ class Data(object):
         for (key, value) in zip(keys, values):
             self.__dict__[key] = value
         self.id = 0
+        self.winner = ''
         self.usedCategorical = []
         self.predict = None
 
