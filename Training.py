@@ -1,8 +1,6 @@
 import math
 import numpy as np
 import data_load
-import copy
-import time
 
 
 def buildDecisionTree(data, attribute, config, start=True, max_depth=3):
@@ -22,12 +20,16 @@ def buildDecisionTree(data, attribute, config, start=True, max_depth=3):
 
         for _leaf, _index in enumerate(range(len(classes))):
             _leaf = data_load.Leaf()
+
             if winner_attribute.type is 'Continuous':
                 _leaf.rule += 'obj.' + str(winner_attribute.name) + ' ' + str(classes[_index])
                 processed_data = list(filter(lambda x: x.winner == classes[_index], data))
             else:
                 _leaf.rule += 'obj.' + str(winner_attribute.name) + ' is ' + "'" + str(classes[_index]) + "'"
                 processed_data = list(filter(lambda x: x.__getattribute__(winner_attribute.name) == classes[_index], data))
+
+            _leaf.parent = '1 '
+            _leaf.id = '1 ' + str(_index)
 
             # =========================================
 
@@ -77,6 +79,9 @@ def buildDecisionTree(data, attribute, config, start=True, max_depth=3):
                     _child_leaf.rule += 'obj.' + str(winner_attribute.name) + ' is ' + "'" + str(classes[_index]) + "'"
                     processed_data = list(
                         filter(lambda x: x.__getattribute__(winner_attribute.name) == classes[_index], _leaf.dataset))
+
+                _child_leaf.parent = _leaf.id
+                _child_leaf.id = _child_leaf.parent + ' ' + str(_index)
 
                 # =========================================
 

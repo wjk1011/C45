@@ -20,6 +20,9 @@ class Leaf:
         self.dataset = []
         self.terminateBuilding = False
         self.branch = 0
+        self.parent = None
+        self.id = None
+        self.branchAttribute = None
 
 
 def attribute_set(attribute, data):
